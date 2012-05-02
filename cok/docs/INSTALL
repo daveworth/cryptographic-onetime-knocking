@@ -1,0 +1,36 @@
+System Requirements
+-------------------
+Java (tested with Sun JDK v1.4.1 & v1.4.2 under Gentoo and
+         Apple's JDK 1.4.2 on OSX)
+
+Ant (tested with v1.5.4 & 1.6.1)
+
+jpcap (http://jpcap.sourceforge.net) v0.01.15
+
+Installation
+------------
+Necessary Steps:
+-1) Build JPCAP as per their instructions
+
+ 0) Unpack tarball of COK
+
+ 1) Copy the jpcap jar files (jpcap.jar jpcap-core.jar) and library
+      (libjpcap.so or libjpcap.jnilib) )into <COKROOT>/lib
+
+ 2) In the root directory of the COK tree run %ant.  Ant will build all the 
+      source files and move the libraries into <COKROOT>/build/jars/lib, 
+      and place the 3 jar files it builds in <COKROOT>/build/jars
+
+Optional Steps
+ 3) If you are running under OSX also run %ant ExportOSXApps, which
+      will create two OSX Apps in <COKROOT>/build/Apps
+
+ 4) Configure <COKROOT>/lib/badPolicy to be a "good" policy for your
+      site.  If you choose to rename badPolicy then you must edit
+      <COKROOT>/scripts/runCOKd and change the policy file there.
+      Another option for dealing with policies to install jpcap
+      into ${java.home}/lib/ext, which by default gets
+      java.security.AllPermission (according to my java.policy)
+
+ 5) If you plan on developing COK further you will likely want to run
+      %ant docs to generate the javadoc for all of COKs packages

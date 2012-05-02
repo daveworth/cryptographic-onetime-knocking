@@ -1,0 +1,111 @@
+<?xml version="1.0"?>
+
+<project name="COK" default="jar" basedir=".">
+
+  <condition property="isOSX">
+    <and> <os family="mac" /> <os family="unix" /> </and>
+  </condition>
+
+  <condition property="isUNIXnotOSX">	
+    <and> <os family="unix" /> <not> <os family="mac" /> </not> </and>
+  </condition>
+
+  <description>
+  	COK - Cryptographic One-Time Knocking
+  </description>
+  
+  <property name="src.dir"     value="src"      />
+  <property name="docs.dir"    value="javadocs" />  
+  <property name="build.dir"   value="build"    />
+  <property name="lib.dir"     value="lib"      />
+  <property name="jar.dir"     value="${build.dir}/jars"               />
+  <property name="macapp.dir"  value="${build.dir}/Apps"               />
+  <property name="package.lst" value="cokd,coknocker,cokshare,coktool" />
+
+  <path id="project.class.path">
+    <pathelement path="${classpath}"              />
+	<pathelement path="${lib.dir}/jpcap.jar"      />
+	<pathelement path="${lib.dir}/jpcap-core.jar" />
+  </path>
+
+  <target name="all" depends="compile,docs">
+  </target>
+
+  <target name="compile">
+    <mkdir dir="${build.dir}" />
+	<javac srcdir="${src.dir}" destdir="${build.dir}" listfiles="yes"  debug="yes" optimize="yes">
+	  <classpath refid="project.class.path" />
+	</javac>
+
+	<javac srcdir="${src.dir}/external" destdir="${build.dir}" listfiles="yes" debug="no" optimize="yes">
+	</javac>
+
+	<rmic classname="cokd.COKd" base="${build.dir}" />
+
+  </target>
+  
+  <target name="jar" depends="compile">
+	<mkdir dir="${jar.dir}" />
+	<jar destfile="${jar.dir}/coknocker.jar" basedir="${build.dir}" includes="coknocker/**,cokshare/**,layout/**" manifest="${lib.dir}/coknocker.manifest" />
+	
+	<jar destfile="${jar.dir}/coktool.jar" basedir="${build.dir}" includes="coktool/**,cokshare/**,layout/**,cokd/COKd_Stub.class" manifest="${lib.dir}/coktool.manifest" />
+	
+	<jar destfile="${jar.dir}/cokd.jar" basedir="${build.dir}" includes="cokd/**,cokshare/**" manifest="${lib.dir}/cokd.manifest" />
+
+	<mkdir dir="${jar.dir}/lib" />
+
+	<copy file="lib/jpcap.jar"       todir="${jar.dir}/lib" />
+	<copy file="lib/jpcap-core.jar"  todir="${jar.dir}/lib" />
+	<copy file="lib/badPolicy"       todir="${jar.dir}/lib" />
+	<copy file="scripts/runCOKd.pl"  todir="${jar.dir}"     />
+	<copy file="lib/html/COKnocker.html" todir="${build.dir}/lib" />
+
+	<antcall target="copyOSX"        />
+	<antcall target="copyUNIXnotOSX" />
+
+	<chmod file="${jar.dir}/runCOKd.pl" perm="700"      />
+
+  </target>
+
+  <target name="copyOSX" if="isOSX">
+	<copy file="lib/libjpcap.jnilib" todir="${jar.dir}/lib" />
+  </target>
+
+  <target name="copyUNIXnotOSX" if="isUNIXnotOSX">
+    <copy file="lib/libjpcap.so" todir="${jar.dir}/lib" />
+  </target>
+
+  <target name="ExportSource">
+  </target>
+
+  <target name="ExportBinary" depends="jar">
+  </target>
+
+  <target name="ExportOSXApps" if="isOSX" depends="jar">
+    <mkdir dir="${macapp.dir}" />
+	<copy todir="${macapp.dir}">
+	  <fileset dir="${lib.dir}" includes="COKnocker.app/**" />
+	</copy>
+	<copy file="${jar.dir}/coknocker.jar" todir="${macapp.dir}/COKnocker.app/Contents/Resources/Java" />
+	<chmod file="${macapp.dir}/COKnocker.app/Contents/MacOS/JavaApplicationStub" perm="700" />
+	<copy todir="${macapp.dir}">
+	  <fileset dir="${lib.dir}" includes="COKtool.app/**" />
+	</copy>
+	<copy file="${jar.dir}/coktool.jar" todir="${macapp.dir}/COKtool.app/Contents/Resources/Java" />
+	<chmod file="${macapp.dir}/COKtool.app/Contents/MacOS/JavaApplicationStub" perm="700" />
+  </target>
+
+  <target name="ExportAll" depends="ExportSource,ExportBinary,ExportOSXApps">
+  </target>
+
+  <target name="docs" depends="compile">
+    <mkdir dir="${docs.dir}" />
+    <javadoc sourcepath="src" destdir="${docs.dir}" packagenames="${package.lst}" classpathref="project.class.path" />
+  </target>
+
+  <target name="clean">
+    <delete dir="${build.dir}" />
+	<delete dir="${docs.dir}"  />
+  </target>
+
+</project>

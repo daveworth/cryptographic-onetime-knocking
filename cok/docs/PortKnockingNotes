@@ -1,0 +1,166 @@
+June 6, 2004
+------------
+
+Not only should it be shipped to udp/53, but perhaps we should make this a bit
+more steganographic and make it look like a real DNS query!
+
+June 4, 2004
+------------
+
+A decent way to mask a UDP one-time-knock is by shipping it to udp/53
+on a given server... it then will appear to a casual observer to be an
+odd name lookup!
+
+Also a solution to parity lock/unlock has presented itself.  In
+traditional S/Key one uses a public seed, which allows the same secret
+passphrase to be used on multiple hosts w/o revealing the next secret
+key.  Since COK does not use a challenge/response system one can
+replace the challenge seed with a command in some respects.
+
+For example, if you generate a knock with a ruleset, make the
+passphrase associated with it the "name" of the ruleset.  For example,
+if you have a lock and unlock chain, and the passphrase is "This is a
+test." then the secret to generate the knock could be "LockThis is a
+test." and "UnlockThis is a test."
+
+May 27, 2004
+------------
+
+Excerpts from OpenBSD-misc mailing list:
+
+Rick Wash:
+
+"OpenBSD has a much better and more secure solution to this problem.  Its 
+called AuthPF."
+
+---------------- From OpenBSD FAQ : PF - authpf -------------------------------
+
+Authpf(8) is a user shell for authenticating gateways. An
+authenticating gateway is just like a regular network gateway
+(a.k.a. a router) except that users must first authenticate themselves
+to the gateway before it will allow traffic to pass through it. When a
+user's shell is set to /usr/sbin/authpf (i.e., instead of setting a
+user's shell to ksh(1), csh(1), etc) and the user logs in using SSH,
+authpf will make the necessary changes to the active pf(4) ruleset so
+that the user's traffic is passed through the filter and/or translated
+using Network Address Translation or redirection. Once the user logs
+out or their session is disconnected, authpf will remove any rules
+loaded for the user and kill any stateful connections the user has
+open. Because of this, the ability of the user to pass traffic through
+the gateway only exists while the user keeps their SSH session open.
+
+*********
+
+This sounds really badass... sent fear into my heart... for a few minutes
+------------------------------------------------------------------------------
+
+Magnus Bodin:
+
+"authpf is fine. I use it.
+
+But if you don't want to expose any tcp-ports at all, that includes
+port 22 as well. And if you are on the move and cannot guarantee that
+ah/esp et al is even transported then one alternative is to hide.
+
+I personally don't like the "port-knocking" way of doing it and the
+implementation itself so I wrote a simple script myself that
+
+    1. use Net::Pcap and listen for ICMP echo req.
+    2. if a valid combination of uid + one time password
+         flies by in the PAYLOAD of the ICMP, then insert ip in 
+         a special pf-table (so she will get access to tcp/22).
+    3. check regulary for table-entries that has had no valid connection
+       for a couple of minutes and remove them from the table.
+
+Pretty trivial and effective and a good complement to authpf, actually. 
+If any is interested I can wrap it up in a package.
+
+I trust OpenSSH as I trust my ASSA Twin-lock on my house, but only those who
+walk upfront my yard will be able to test their lock-picking abilities to it. 
+
+If it's possible to hide my tcp/22-port from occasional portscan-kiddies,
+that would be a way of lowering the risk even more."
+
+Ok, so it sounds like I ripped off a bit of my idea from him (we both thought 
+it up... I just implemented it here...)
+
+Problems with both of our implementations... loads of networks filter
+ICMP (bastards) and UDP except on appropriate ports (53).  Magnus had the 
+right philosophy near the end, if absolutely nothing else.
+
+Adam Skutt:
+
+"Why should I care about exposed ports?  Security arises not out of how 
+many ports are being shown or not shown, but rather how secure the 
+servicse behind them are.  It doesn't matter if all my ports are open if 
+the services running them have no security flaws ( a pipe dream, but 
+illustrates the point)."
+
+We should care because security is about layers and not a single
+tool... See also vulnerabilities in once assumed secure tools and
+versions of tools.  OpenSSH was once the godsend for all admins, then
+it became a serious version chase, then it became "secure if you use
+this feature" (so there were still known vulns, which when combined
+with local kernel bugs became fatal!)
+
+"How?  What risk does it lower?  What do you lose from a portscan, 
+besides a tiny bit of network traffic?  You still haven't explained how 
+this increases teh security of your box."
+
+If you cannot find the door, you cannot pick the lock, and you cannot open it.
+
+Greg Thomas: 
+
+"Scenario: I need to be able to SSH into a box from anywhere in the
+world but not very often, a new exploit of SSH comes out.  What's the
+better solution than port knocking to protect yourself from the
+exploit?
+ 
+Just curious as it's interesting to think this stuff through and I'm
+not very knowledgable here"
+
+Exactly... see above!
+
+Dom De Vitto:
+
+"Exactly, there is no silver bullet to security.
+
+Excluding port knocking is like excluding packet filtering - after all
+any packet filter is useless if appropriate packets can be generated
+to pass it, it's just security though obscurity that the attacker does
+know the ruleset.
+
+I would say that embedding usernames/passwords into pings is _not_
+such a good idea, simply because of the risk if that user/password
+also being similar other you may own, e.g. your ssh credentials. 
+
+The bottom line is that security through obscurity is flawed, as long
+as you understand the flaws, it's better than nothing."
+
+Nick Holland:
+
+"Greg Thomas wrote: 
+> 
+> Scenario: I need to be able to SSH into a box from anywhere in the world but 
+not very often, a new exploit of SSH comes out.  What's the better solution 
+than port knocking to protect yourself from the exploit?
+
+Same as the answer to 'What's the protection if your port knocking
+system has an exploit?'"
+
+Firstly, if your port-knocker has an exploit you are dead... sure.
+There are things you can do to help yourself... use a type-safe
+language (Java/LISP/Perl,etc...).  This is not a silver bullet, just
+adds a layer of protection.  Write your own knocking system, which
+enemies cannot see... security via obscurity?  yes, but just like the
+entire knocking principal...  Add a layer of security, and you will
+likely be better off in the long run..
+
+"One idea: have one box you keep 'safe' and up to date and able to fix
+quickly.  New SSH exploit comes out, you fix that box first.  Your
+other systems are filtered to only accept ssh traffic from that one
+box (actually, for redundancy purposes, have TWO boxes on totally
+different locations/service providers)"
+
+This cannot effectively stop the 0-day ssh worm which tears apart the
+net before Theo can get to it...

@@ -1,0 +1,11 @@
+Main-Class: cokd.COKd
+Sealed: true
+Class-Path: lib/jpcap-core.jar lib/jpcap.jar
+Specification-Title: "Cryptographic One-Time Knocking (Daemon)" 
+Specification-Version: "1.0"
+Specification-Vendor: "Hexi-Dump"
+Implementation-Title: "COKd" 
+Implementation-Version: "build0"
+Implementation-Vendor: "Hexi-Dump"
+
+

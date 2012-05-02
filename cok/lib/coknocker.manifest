@@ -1,0 +1,10 @@
+Main-Class: coknocker.COKnocker
+Sealed: true
+Class-Path: 
+Specification-Title: "Cryptographic One-Time Knocking (Client)" 
+Specification-Version: "1.0"
+Specification-Vendor: "Hexi-Dump"
+Implementation-Title: "COKnocker" 
+Implementation-Version: "build0"
+Implementation-Vendor: "Hexi-Dump"
+

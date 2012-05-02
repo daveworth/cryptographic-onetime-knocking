@@ -1,0 +1,29 @@
+Key: S - COK's Whole System
+     D - COKDaemon
+	 T - COKTool
+	 K - COKnocker
+	 M - Misc
+
+ S - Get COKd/COKTool to communicate over RMI/SSL
+     http://java.sun.com/j2se/1.4.2/docs/guide/security/jsse/samples/index.html
+ S - Push model for COKTool to be updated appropriately!
+     http://java.sun.com/developer/onlineTraining/rmi/exercises/RMICallback/index.html
+
+ S - Cleanup System.out.println() and XXX in codebase
+
+ S - URL knocks
+ S - SMS knocks
+
+ S - Abstraction of JPanel which contains labelMessage, setMessage(), etc...
+
+ D - Support state saving via CRYPTED preferences!
+ D - Get syslogger to actually work on mac
+ D - Extended preferences
+       * Multiple / remote syslog hosts
+
+ T - allow for existing knock editing!
+ T - Rule editor templates (common rules)
+ T - Disconnect
+
+ K - dig clone in coknocker
+ K - sign jar files for use as applets

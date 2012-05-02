@@ -1,0 +1,254 @@
+COK - Cryptographic One-Time-Knocking : Port Knocking Done "Better"
+===============================================================================
+
+Goal: Prevent replay attacks on port-knocking systems via use of the 
+One Time Password system (S/Key) detailed in RFC 2289
+(http://www.ietf.org/rfc/rfc2289.txt)
+
+Supported Platforms
+-------------------
+
+COK has been tested under Linux (Gentoo) w/ Sun's JDK v1.4.2 and with
+OSX w/ v1.4.1 JDK.  In theory the system should run under any OS on
+which jpcap can be compiled.  Please send me successes and/or failures
+on various platforms, though if the issue is with jpcap I cannot
+garauntee any successful assistance
+
+-------------------------------------------------------------------------------
+Using COK
+-------------------------------------------------------------------------------
+
+First: Read INSTALL in docs/, otherwise I cannot/will-not help.
+
+Running COK's Components
+------------------------
+
+To run the daemon: Change directories into <COKROOT>/jar and run (as
+ root... via sudo) the script called runCOKd.pl
+
+COKd Usage: %runCOKd.pl <options>
+Options: --debug   (-d)                  : Print debugging output to STDOUT
+         --verbose (-v)                  : same as --debug
+         --interface <device> (-i <dev>) : Specify interface to listen on
+         --clear   (-C)                  : Delete stored knocks on startup
+         --ignore  (-I)                  : Ignore stored knocks on startup
+         --help    (-h)                  : Print this lovely help screen
+
+To run the tool: Change directories into <COKROOT>/jar and run 
+ %java -jar coktool.jar
+
+To run the client: Change directories into <COKROOT>/jar and run 
+ %java -jar coknocker.jar
+
+Using COK
+---------
+
+Short Version:
+
+ * Run COKd via instructions above
+ * Run COKtool, setup knocks as appropriate
+ * Go to remote site, and use COKnocker, or appropriate tool, to
+    trigger your newly created knocks.
+
+Long Version:
+ * Run COKd via instructions above
+   
+ * Run COKtool (under OSX run the COKtool.app)
+
+   -> First provide the address/hostname of the machine on which you
+        ran COKd, then press connect.  The connect button should turn
+        into a refresh button.
+
+   -> You may now add or delete knocks at will, or you may halt COKd.
+        Note: Halting COKd saves all currently running knocks in their
+        current state, and they will be reloaded at the next running
+        of COKd unless you run the daemon with -C or -I.
+
+      Note: The table on the main COKtool panel provide information
+      about currently enabled knocks.  The left column is simply the
+      class of knock, while the right column is the "knock
+      description" which is an internal textual description of the
+      knock, but which provides enough information that a user should
+      be able to parse the string and understand which knock is which.
+
+     => Adding knocks is straight forward: Provide the necessary
+          information to the GUI for the knock you want to create.
+          For information regarding editing of rulesets, please see
+          the section below entitled "Rule Editing".
+
+          - All Knocks : All knocks share some bits of information -
+             They all have success rules, bad source rules, and valid
+             host lists.  To edit success rules or bad source rules
+             click on the appropriate button; the specifics of editing
+             rules is outlined below.  To edit the Valid Source List
+             the interface is fairly straight forward.  Addresses can
+             either be CIDR Blocks or IP addresses (Which are
+             converted into /32 CIDR blocks).  Many addresses (CIDRs
+             or IPs) can be specified on one line, either space or
+             comma separated.  Also note that if no (zero) addresses
+             are specified then all source addresses are considered
+             valid. (this is equivalent to a source address set of
+             0.0.0.0/0)
+
+          - UDP OTP Knocks : Passphrase, Rulename, Port, and Number of
+             Passphrases to generate (Count).  The rulename allows one
+             to create many rules with the same Passphrase, but
+             different rulenames, which simplifies calculation of OTPs
+             in application.  UDP_OTP_Knocks also have replay rules,
+             which are executed in case of a replay attack against COKd.
+
+          - DNSKnocks : DNSKnocks are derived from UDP_OTP_Knocks so
+             many components are the same, though port is replaced by
+             knock domain, which is a domain for which DNS queries
+             will be created.  DNS knocks do not require the COKnocker
+             client to be used in generating the knock, instead dig(1)
+             can be used.  To use dig the command will be similar to:
+               %dig @<cokd host> <OTP>.<knock domain> +tries=1
+          
+             Like UDP OTP Knocks, DNS Knocks have replay rules which may
+              also be configured.
+
+          - Port Sequence Knocks are an implementation of the original
+             port-knocking idea in which a shared secret of port-knocking
+             sequences are passed to a cokd server.  The required fields
+             in port sequence knocks are timeout interval (the time in
+             which the connects must arrive, shorter provides more
+             security against brute-force attacks but may be an issues in
+             high-latency situations), and the actual sequence of ports
+             to be connected to.  The sequence of ports is a string
+             containing space or comma separated port specifications.
+             Port specifications may be either individual port numbers or
+             port number ranges (i.e. 22-25, which is 22 through 25
+             inclusive) which are converted into sets of ordered
+             individual ports.  Note that ranges may also descend
+             (i.e. 32-30, which is 32, 31, 30).
+
+ * From an appropriate (and properly specified source address)
+    location run COKnocker or an alternative (under OSX I recommend
+    using the COKnocker.app).  If you are using COKnocker then its
+    usage is fairly self explanatory:
+
+    -> For UDP Knocks simply use the UDP COKnocker panel.  Provide the
+       hostname/address of the server running COKd, and the port on
+       which COKd is listening for the OTP knock you are about to
+       provide.  Then either provide the OTP, or you can
+       auto-magically calculate it with bottom portion of the panel.
+       In the bottom portion simply provide your passphrase, the OTP
+       number to generate, the rulename, and the hashing algorithm to
+       use, and click calculate.  The OTP you need will be placed in
+       the appropriate text-field and you can now click on send.
+       Note: if you are running COKnocker on an unknown host then you
+       cannot trust the JVM in which the application is running.  This
+       mean simply that the owner of the machine may have recompiled
+       their own JVM which records the contents of all
+       JPasswordFields, and may subsequently be recording your
+       passphrase for the knock.
+
+    -> For port-sequence knocks the process is very similar, only you
+       need only to provide the hostname/address of the host, and the
+       port-sequence (in the same format as was used when creating the
+       knock, though the strings do not have to be identical).  Then
+       click send.
+
+    -> For completeness a traditional OTP calculator is provided in
+       the third tab, and its use is identical to the other sections.
+       If you are using the calculator with a standard S/Key system
+       (like openssh) make sure you enable the RFC Compliance
+       checkbox.
+
+Rule Editing
+------------
+
+To understand rule editing, one must understand ruleset execution.
+Ruleset execution is straight forward:
+
+* First any pre-processor macros are replaced with their appropriate
+  values.  Currently implemented pre-processor macros are:
+ 
+ __SRC_IP__, __SRC_PORT__ which are replaced by source IP address and
+   source port, respectively
+
+ __DEST_IP__, __DEST_PORT__ which similarly, are replaced by
+   destination IP address and destination port, respectively.
+
+ __KNOCKDESC__ which is an internal textual description of the knock
+   itself. This is not terribly useful at first glance, but it does
+   provide a good bit of information about knock executed in the
+   context of logging (to be discussed later).  To correlate this to
+   knocks you have created simply look in the second column on the
+   main COKtool panel.
+
+* Next execution macros are parsed.  Currently the only types of
+    execution macros are output macros.  The implemented output macros
+    are:
+
+  __LOG__ which syslogs the remainder of the line to localhost's
+    syslog server (if one is bound on udp/514)
+
+  __PRINT__ which simply prints the remainder of the line to STDOUT
+    [Deprecated]
+
+  For an execution macro to be parsed the line must begin with the
+  execution macro, and after it has been executed paring continues
+  with the next rule in the ruleset.
+
+* Finally, if no execution macros are present, the line is executed as
+  a shell command.  In this way *any* local system command can be
+  executed from a ruleset.
+
+Example Rules (and parsed output)
+---------------------------------
+
+rule: __LOG__ Successful UDP OTP Knock (__KNOCKDESC__) from __SRC_IP__ to __DEST_IP__(__DEST_PORT__)
+
+logged output: Successful UDP OTP Knock (UDP_OTP_rule_SHA1_31337) from 192.168.1.200 to 192.168.1.3(31337)
+
+rule (rulename open-ssh): /sbin/iptables -I INPUT -p tcp --dport 22 -j ACCEPT -s __SRC_IP__
+
+executed output (after knock from 192.168.1.200): /sbin/iptables -I INPUT -p tcp --dport 22 -j ACCEPT -s 192.168.1.200 
+
+rule (rulename close-ssh): /sbin/iptables -D INPUT -p tcp --dport 22 -j ACCEPT -s __SRC_IP__
+
+executed output (after knock from 192.168.1.200): /sbin/iptables -D INPUT -p tcp --dport 22 -j ACCEPT -s 192.168.1.200 
+
+-------------------------------------------------------------------------------
+Implementation Details / Notes
+-------------------------------------------------------------------------------
+General
+-------
+
+Server (COKd)
+-------------
+
+COKd cannot syslog to a syslog server which does not listen on udp/512
+as there is no java support for unix sockets.  So on any platform that
+only supports unix sockets (OSX by default, for example) logging will
+fail!
+
+NOTE: If one gets the following error: "PacketCapture: loading native
+library jpcap.. Exception in thread "main"
+java.lang.ExceptionInInitializerError" then one only needs add the
+following block to one's java.policy file:
+
+grant {
+	permission java.security.AllPermission;
+    permission java.lang.RuntimePermission "loadLibrary.jpcap";
+};
+
+Though this should be fixed in badPolicy!
+
+
+-------------------------------------------------------------------------------
+Credits
+-------------------------------------------------------------------------------
+- jpcap is a JNI wrapper to libpcap, which allows us to use Java, all
+   of its powerful data-structures and crypto API (and thus its
+   resilience to standard buffer/heap/integer overflow attacks)
+ * http://sourceforge.net/projects/jpcap
+
+- TableLayout rules... we use it to minimize GUI pain
+ * http://www.clearthought.info/software/TableLayout
+
+- Thank you to Omid Tavallai for letting me use his Icons for my OSX
+    Applications.  Give the guy some work: http://www.tavallai.com/
+    and check out his icons at http://www.xicons.com

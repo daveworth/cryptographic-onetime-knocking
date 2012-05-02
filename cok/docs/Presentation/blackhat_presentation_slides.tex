@@ -1,0 +1,150 @@
+\documentclass[landscape,twocolumn]{foils}
+\usepackage{graphics}
+\usepackage{framed}
+\usepackage{color}
+
+\begin{document}
+
+\LogoOff %turn off the FoilTeX logo
+
+\MyLogo{\includegraphics{coklogo_small.png}}
+
+\foilhead{C\"{O}K - Cryptographic One-Time Knocking}
+
+\center{\includegraphics{coklogo.png}}
+
+David Worth - cesium@hexi-dump.org\\
+http://www.hexi-dump.org
+
+\rightfooter{\includegraphics{bh-us-04-masthead_small.jpg}}
+
+\foilhead[-.8in]{Port-Knocking: Define, Defend, Attack}
+\LogoOn
+\raggedright
+\small
+
+\emph{Define:} Port-Knocking originally described a means of passing a shared secret from an arbitrary host to another, generally ``secure'', host.  This shared secret was nothing more than a (short) sequence of \texttt{connect(2)} calls to a sequence of ports, at which point the firewall would be opened to the sending host.
+
+\center{i.e. \texttt{31335,31336,31337 -> Open Sesame, you're \emph{SO} |337!}}
+
+\raggedright
+\emph{Attack:} This system is vulnerable to a trivial replay attack.  Some port-knocking systems which use cryptography to protect themselves from this attack use their source IP as part of their encrypted payload, to specify the host to open the firewall for;  In a NATed context (a WiFi hotspot for example) for the port-knock to be successful the external address, which acts as the source address, of the NAT provider must be opened, at which point any user of the hotspot has access to the same service without replaying, or the ability to replay later from the hotspot.
+
+\emph{Defend:} Applications of port-knocking include limiting access to important resources, using the port-knocking system as a gate-keeper, and those pesky replay attacks can be foiled via cryptographic techniques...
+
+\foilhead{Cryptographic Techniques Employed in Port-Knocking}
+\normalsize
+By using appropriate cryptographic techniques we can prevent replay attacks.  Shared secrets are a bad idea, so we use a more dynamic system...
+
+\emph{One} candidate for such a system is One-Time-Passwords (OTP A.K.A. S/Key).  OTP was designed for insecure transport media (rlogin/telnet actually).  OTP's resilience to replays is based  upon the cryptographic hash function one chooses to use (MD5 or SHA1 traditionally), and the \emph{pre-image resistance} of that has function.
+
+S/Key is defined in RFC 1760, and OTP in RFC 2289.
+
+\foilhead[-.7in]{30 Second Introduction to One-Time-Password Schemes}
+\small
+To generate $n$ one time passwords one simply iteratively computes the cryptographic hash function $f(x)$ on the output of the previous step:
+
+\begin{table*}
+%\caption{One Time Passwords}
+\begin{center}
+\begin{tabular}{|c|c|}
+\hline
+0 & $p:=$``password'' \\
+1 & $f(p)$ \\
+2 & $f(f(p))$ \\
+$\vdots$ & $\vdots$ \\
+$n$ & $f(\cdots f(p))$ \\
+$n+1$ &  $f(f(\cdots f(p)))$ \\
+\hline
+\end{tabular}
+\end{center}
+\label{default}
+\end{table*}
+
+The server begins by storing the $(n\!+\!1)^{th}$ iteration of the function.  To authenticate one provides the $N:=\!n^{th}$ iteration, the server calculates $f(N)$, and compares it to the stored $(n\!+\!1)^{th}$ iteration.  If they match the server authenticates the user, and stores the $n^{th}$ iteration for the next round of authentication.  In this way the system works backwards through the $n$ passwords calculated initially.
+
+\foilhead{We can \textcolor{red}{\emph{STOP}} Replay Attacks with OTP}
+\normalsize
+Replay attacks fail by virtue of OTP's design; replaying a previous password means that extra iterations of the hash-function are effectively computed, and the comparison step auto-magically fails.
+
+Detection of attempted replay attacks is also simple: collect valid one-time passwords in a hash, and when you receive an invalid password, check if it is in the hash.  If it is then someone is attempting to replay a previous password, and appropriate action can be taken against the attacker (i.e. block them entirely @ the firewall, \texttt{nmap(1)} them, DoS, 0-day, etc...)
+
+\foilhead[-.7in]{Welcome to C\"{O}K Country - a Brief introduction to C\"{O}K}
+\small
+C\"{O}K is an implementation of an OTP-based port-knocking system, written in Java with JPCAP (a JNI wrapper to libpcap).  The primary components of C\"{O}K are:
+
+\begin{description}
+\item[COKd] The daemon which does all the listening and tracking of knocks
+\item[COKtool] The configuration tool which interacts with COKd via RMI
+\item[COKnocker] The actual knocking tool (though there exist knock types which do not require COKnocker to generate them)
+\end{description}
+
+Currently three knock types are implemented, more can be at a later time:
+\begin{description}
+\item[OTP Knock] One-Time-Password knock, sent via COKnocker in a UDP packet
+\item[DNS Knock] Form of a one-time-password knock in which the knock is sent via a DNS lookup to a given listening host (most likely to avoid detection if the listening host is also a DNS server)
+\item[Port Sequence Knock] Traditional, replayable, sequence of tcp connections, implemented for the sake of completeness.
+\end{description}
+
+\foilhead[-.6in]{What Can C\"{O}K Do?}
+\large
+\center{Answer: \textbf{\emph{\textcolor{red}{Anything!}}}}
+
+\raggedright
+\small
+C\"{O}K is not limited by some set of pre-defined commands it can run, in fact, it can run anything your system can run.  Parsing of rules occurs as follows:
+
+\begin{enumerate}
+\item Certain preprocessor macros: \verb;__SRC_IP__;,\verb;__SRC_PORT__;,\verb;__DEST_IP__;, and \verb;__DEST_PORT__; are replaced with the source IP, source port, destination IP, and destination port respectively, and \verb;__KNOCKDESC__; is replaced with a textual representation of the knock.
+\item The rule is then checked for a leading execution macros, of which there are currently two: \verb;__LOG__; and \verb;__PRINT__; (deprecated), which log to the syslog server, and print to \texttt{STDOUT} respectively.  The parameter to the execution macro is the text following the directive.
+\item If no execution macro is specified, then the rule is assumed to be a command, which is then executed on the system.
+\end{enumerate}
+
+\foilhead[-.6in]{Where does C\"{O}K Fit in the Context of Network Security?}
+
+\emph{Short Answer:} It provides an additional layer of trust for important network resources.
+
+\emph{Long Answer:} Given the dynamic nature of modern network security providing the least possible access to would-be attackers is a ``best-practice'' that should always be followed.  Even with traditionally trusted tools such as \texttt{sshd}, there is a potential for 0-day exploits, and compromise.  To prevent this  attack vector from being used one may drop all packets destined for a sensitive network device, and only open them to authorized individuals via  a cryptographic one-time port-knock.
+
+Since the original context in which port-knocking was discussed was in terms of firewall management, it is often forgotten that other applications exist.  Since C\"{O}K allows for arbitrary commands to be run on the server it can be used as an authenticated remote application gateway to run appropriate tools remotely, and log their calls.
+
+\foilhead{Demonstration}
+\large
+\center{Here we go...}
+
+\foilhead[-.5in]{The Future of Port-Knocking}
+\raggedright
+\footnotesize
+
+\begin{description}
+\item[Covert Knocks]  DNS Knocks are one implementation of a covert knock, but only  if the server running a DNS server (\texttt{bind}, etc...).  We can also induce appropriate One-Time-Knocks to be generated by using a web browser, if the DNS server for a given domain is the target for our knocks.  For example, if we run the DNS server for \texttt{foo.org}, on which we want to run a restricted service, we may run COKd, and point our browser to [OTP].foo.org.  The DNS server will fail to resolve [OTP].foo.org, but COKd will act appropriately by processing the DNS query.
+
+\item[OOB Knocks] Using an out-of-bound protocol such as SMS to transport knocks is perfectly reasonable and raises the ante for a man-in-the middle.  To execute a MITM attack against SMS one must recognize that knocking is occurring via the SMS network, and compromise it.  This is not necessarily more difficult that compromising a router in the tcp/udp context, it just requires more information.
+
+\end{description}
+
+\foilhead[-.7in]{Bibliography and Links}
+\tiny
+\begin{thebibliography}{99}
+\bibitem{portknocking-general} Krzywinski, M.  2003.  ``Port Knocking: Network Authentication Across Closed Ports.'' SysAdmin Magazine 12: 12-17.
+\bibitem{portknockingorg} \texttt{www.portknocking.org} - \verb;http://www.portknocking.org;
+\bibitem{handbookappliedcrypto} Menezes, Alfred J, et al. \underline{Handbook of Applied Cryptography} - \verb;http://www.cacr.math.uwaterloo.ca/hac/;
+\bibitem{appliedcrypto} Schneier, Bruce. \underline{Applied Cryptography: Protocols, Algorithms, and Source Code in C (Second Edition).} New York: Wiley, 1996.
+\bibitem{rfc2289} RFC 2289 - A One-Time Password System
+\end{thebibliography}
+
+\large
+\textbf{Useful Links:}
+
+\tiny
+\verb;jpcap - http://jpcap.sf.net;\\
+\verb;jotp: The Java OTP Calculator - http://www.cs.umd.edu/~harry/jotp;\\
+\verb;authpf - http://www.openbsd.org/faq/pf/authpf.html;\\
+
+\large
+\textbf{Other Reading:}
+
+\tiny
+The \texttt{openbsd-misc} mailing list \verb;(http://monkey.org/cgi-bin/wilma/openbsd-misc);  contains a thread entitled ``Port Knocking on openBSD'' and was begun on Thurs. Feb 05, 2004.  This is good reading for background...
+
+\end{document}

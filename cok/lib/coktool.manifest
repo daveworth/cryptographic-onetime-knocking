@@ -1,0 +1,10 @@
+Main-Class: coktool.COKTool
+Sealed: true
+Class-Path: 
+Specification-Title: "Cryptographic One-Time Knocking (Configuration Tool)" 
+Specification-Version: "1.0"
+Specification-Vendor: "Hexi-Dump"
+Implementation-Title: "COKTool" 
+Implementation-Version: "build0"
+Implementation-Vendor: "Hexi-Dump"
+
